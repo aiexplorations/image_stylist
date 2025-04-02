@@ -153,10 +153,15 @@
 
             <div class="space-y-4">
                 <h2 class="text-lg font-semibold text-gray-700">Output Image</h2>
-                <div id="outputArea" class="bg-gray-100 rounded-lg p-4 min-h-[300px] flex items-center justify-center relative">
+                <div id="outputArea" class="bg-gray-100 rounded-lg p-4 min-h-[300px] flex flex-col items-center justify-center relative">
                      <div id="loadingIndicator" class="loader hidden"></div>
                     <img id="outputImage" class="hidden max-w-full max-h-[400px] object-contain rounded-md" alt="Stylized output">
                     <span id="outputPlaceholder" class="text-gray-500">Result will appear here...</span>
+                    <div id="downloadContainer" class="mt-3 hidden">
+                        <a id="downloadLink" class="inline-flex items-center px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600" download="styled_image.jpg">
+                            <span class="lucide mr-2">&#xe449;</span> Download Image
+                        </a>
+                    </div>
                 </div>
                 <div id="debugInfo" class="text-xs text-gray-500 hidden"></div>
             </div>
@@ -185,6 +190,8 @@
         const deviceSelect = document.getElementById('deviceSelect');
         const systemInfo = document.getElementById('systemInfo');
         const systemInfoContent = document.getElementById('systemInfoContent');
+        const downloadContainer = document.getElementById('downloadContainer');
+        const downloadLink = document.getElementById('downloadLink');
 
         let inputImageData = null; // Store Base64 image data
         
@@ -323,6 +330,7 @@
                 hideMessage(); // Clear previous messages
                 outputImage.classList.add('hidden'); // Hide previous output
                 outputPlaceholder.classList.remove('hidden');
+                downloadContainer.classList.add('hidden'); // Hide download button when new image is loaded
             }
             reader.onerror = () => {
                 showMessage('Error reading file.', 'error');
@@ -443,6 +451,7 @@
             outputPlaceholder.classList.add('hidden');
             loadingIndicator.classList.remove('hidden');
             debugInfo.classList.add('hidden');
+            downloadContainer.classList.add('hidden'); // Hide download button during processing
             styleButton.innerHTML = `<span class="lucide mr-2 animate-spin">&#xe49f;</span> Styling...`;
                 
                 // Record start time for timing calculations
@@ -531,6 +540,7 @@
                         showMessage('Error: Invalid image data received from server', 'error');
                         outputPlaceholder.textContent = 'Failed to receive valid image data';
                         outputPlaceholder.classList.remove('hidden');
+                        downloadContainer.classList.add('hidden');
                         return;
                     }
                     
@@ -552,9 +562,21 @@
                             outputImage.classList.remove('hidden');
                             outputPlaceholder.classList.add('hidden');
                             showMessage('Style applied successfully!', 'success');
+                            
+                            // Setup download functionality
+                            downloadLink.href = imageData;
+                            
+                            // Generate a filename based on the style description
+                            const styleDesc = stylePrompt.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 30);
+                            const timestamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
+                            downloadLink.download = `styled_${styleDesc}_${timestamp}.jpg`;
+                            
+                            // Show the download button
+                            downloadContainer.classList.remove('hidden');
                         } else {
                             console.error('Image loaded but has no dimensions');
                             showMessage('Error: Generated image has no dimensions', 'error');
+                            downloadContainer.classList.add('hidden');
                         }
                     };
                     
@@ -634,6 +656,7 @@
                 showMessage(`Error: ${error.message}`, 'error');
                 outputPlaceholder.classList.remove('hidden');
                 outputPlaceholder.textContent = 'Failed to generate image. Check console for details.';
+                downloadContainer.classList.add('hidden'); // Ensure download button is hidden on error
             } finally {
                 styleButton.disabled = false;
                 loadingIndicator.classList.add('hidden');

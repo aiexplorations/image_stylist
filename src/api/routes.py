@@ -101,6 +101,16 @@ async def generate_image(request: StyleRequest) -> ModelResponse:
         # Process and encode output image
         print("Processing and encoding output image...")
         output_image = result.images[0]
+        
+        # Apply post-processing: remove black bands and increase resolution
+        from ..utils.image import process_generated_image
+        output_image = process_generated_image(
+            output_image,
+            remove_black_bands=True,
+            min_dimension=1280
+        )
+        print(f"Processed output image size: {output_image.size}")
+        
         base64_output = encode_pil_to_base64(output_image)
         print(f"Output image encoded: Size {output_image.size}, Base64 length: {len(base64_output)}")
 

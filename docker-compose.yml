@@ -11,5 +11,10 @@ services:
     restart: unless-stopped
     environment:
       - PORT=8081
+      - FORCE_CPU_FLAG=true
     volumes:
-      - ./app.py:/app/app.py  # For development: allows changing code without rebuilding
+      - ./src:/app/src  # For development: allows changing code without rebuilding
+      - image_stylist_cache:/app/.cache
+
+volumes:
+  image_stylist_cache:  # Persistent volume for model cache

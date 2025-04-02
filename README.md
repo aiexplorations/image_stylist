@@ -7,6 +7,7 @@ A powerful and flexible application for applying artistic styles to images using
 - **Adjustable Style Transfer**: Control the strength of the applied style
 - **Hardware Acceleration**:
   - Apple Silicon optimization using Metal (MPS)
+  - NVIDIA GPU support via CUDA
   - Automatic fallback to CPU when needed
 - **Interactive Controls**:
   - Adjust style strength from subtle to dramatic
@@ -16,6 +17,15 @@ A powerful and flexible application for applying artistic styles to images using
   - Upload, paste, or drag-and-drop images
   - Real-time feedback on processing status
   - Detailed information about system capabilities
+
+## Recent Updates
+
+- Fixed API response format handling in the frontend
+- Improved error messaging for better debugging
+- Enhanced dummy inference handling to improve startup reliability
+- Added system information endpoint
+- Updated Dockerfile and docker-compose.yml for better containerization
+
 
 ## Requirements
 

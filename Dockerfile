@@ -4,14 +4,16 @@ FROM python:3.10-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PORT=8081
+    PORT=8081 \
+    PYTHONPATH=/app \
+    MODEL_CACHE_DIR=/app/.cache/image_stylist \
+    FORCE_CPU_FLAG=true
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     software-properties-common \
-    nginx \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -23,19 +25,14 @@ RUN pip3 install --no-cache-dir torch torchvision torchaudio --index-url https:/
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
+# Create cache directory
+RUN mkdir -p /app/.cache/image_stylist
+
 # Copy application files
-COPY app.py .
-COPY ollama_styler.html /var/www/html/index.html
-COPY default.conf /etc/nginx/conf.d/default.conf
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY src /app/src
+COPY style_prompt_guide.md /app/style_prompt_guide.md
 
-# Configure nginx
-RUN rm -f /etc/nginx/sites-enabled/default
-
-# Create start script
-RUN echo '#!/bin/bash\nnginx\npython3 app.py' > /app/start.sh && chmod +x /app/start.sh
-
-# Start both nginx and Python app
-CMD ["/app/start.sh"]
+# Start the application
+CMD ["python", "-m", "uvicorn", "src.api.routes:app", "--host", "0.0.0.0", "--port", "8081"]
 
 EXPOSE 8081

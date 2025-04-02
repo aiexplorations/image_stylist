@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Style Transfer</title>
+    <title>Image Stylist: Style Transfer with Stable Diffusion</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       @font-face {
@@ -59,8 +59,8 @@
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
     <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-4xl">
-        <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">Image Style Transfer</h1>
-        <p class="text-center text-gray-600 -mt-4 mb-4">Optimized for Apple Silicon, NVIDIA GPUs, and CPU</p>
+        <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">Image Stylist: Style Transfer with Stable Diffusion</h1>
+        <p class="text-center text-gray-600 -mt-4 mb-4">Optimized for Apple Silicon</p>
 
         <div id="messageArea" class="mb-4 p-3 rounded-md text-sm text-center hidden"></div>
 
@@ -89,12 +89,9 @@
                     
                     <div class="mt-2 flex flex-wrap gap-1">
                         <span class="text-xs text-gray-500 mr-1">Quick styles:</span>
-                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Van Gogh</button>
-                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Cyberpunk</button>
-                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Watercolor</button>
-                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Pixar</button>
-                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Anime</button>
-                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Oil Painting</button>
+                        <div id="stylePresetsContainer" class="flex flex-wrap gap-1">
+                            <!-- Style preset buttons will be dynamically generated here -->
+                        </div>
                     </div>
                 </div>
 
@@ -106,8 +103,8 @@
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
-                        <label for="styleStrength" class="block text-sm font-medium text-gray-700 mb-1">Style Strength: <span id="strengthValue">0.65</span></label>
-                        <input type="range" id="styleStrength" min="0.1" max="0.9" step="0.05" value="0.65" 
+                        <label for="styleStrength" class="block text-sm font-medium text-gray-700 mb-1">Style Strength: <span id="strengthValue">0.2</span></label>
+                        <input type="range" id="styleStrength" min="0.1" max="0.9" step="0.05" value="0.2" 
                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                         <div class="flex justify-between text-xs text-gray-500 px-1">
                             <span>Subtle</span>
@@ -116,8 +113,8 @@
                     </div>
                     
                     <div>
-                        <label for="styleSteps" class="block text-sm font-medium text-gray-700 mb-1">Quality Steps: <span id="stepsValue">50</span></label>
-                        <input type="range" id="styleSteps" min="20" max="100" step="5" value="50" 
+                        <label for="styleSteps" class="block text-sm font-medium text-gray-700 mb-1">Quality Steps: <span id="stepsValue">70</span></label>
+                        <input type="range" id="styleSteps" min="20" max="100" step="5" value="70" 
                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                         <div class="flex justify-between text-xs text-gray-500 px-1">
                             <span>Faster</span>
@@ -153,10 +150,15 @@
 
             <div class="space-y-4">
                 <h2 class="text-lg font-semibold text-gray-700">Output Image</h2>
-                <div id="outputArea" class="bg-gray-100 rounded-lg p-4 min-h-[300px] flex items-center justify-center relative">
+                <div id="outputArea" class="bg-gray-100 rounded-lg p-4 min-h-[300px] flex flex-col items-center justify-center relative">
                      <div id="loadingIndicator" class="loader hidden"></div>
                     <img id="outputImage" class="hidden max-w-full max-h-[400px] object-contain rounded-md" alt="Stylized output">
                     <span id="outputPlaceholder" class="text-gray-500">Result will appear here...</span>
+                    <div id="downloadContainer" class="mt-3 hidden">
+                        <a id="downloadLink" class="inline-flex items-center px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600" download="styled_image.jpg">
+                            <span class="lucide mr-2">&#xe449;</span> Download Image
+                        </a>
+                    </div>
                 </div>
                 <div id="debugInfo" class="text-xs text-gray-500 hidden"></div>
             </div>
@@ -185,6 +187,8 @@
         const deviceSelect = document.getElementById('deviceSelect');
         const systemInfo = document.getElementById('systemInfo');
         const systemInfoContent = document.getElementById('systemInfoContent');
+        const downloadContainer = document.getElementById('downloadContainer');
+        const downloadLink = document.getElementById('downloadLink');
 
         let inputImageData = null; // Store Base64 image data
         
@@ -259,28 +263,44 @@
             "Watercolor": "Delicate watercolor painting, soft colors, flowing, artistic style, loose brushwork",
             "Pixar": "3D animated Pixar style, cartoony, colorful, high quality render, family-friendly",
             "Anime": "Anime style, cel shaded, vibrant colors, detailed, Studio Ghibli inspired",
-            "Oil Painting": "Classic oil painting on canvas, detailed, rich colors, realistic painting style"
+            "Oil Painting": "Classic oil painting on canvas, detailed, rich colors, realistic painting style",
+            "Doom": "Dark, gritty, and intense style reminiscent of the video game DOOM, with a focus on horror and action elements",
+            "Dali": "Surrealistic style inspired by Salvador Dali, dreamlike, bizarre, and imaginative elements",
+            "Monet": "Impressionist style inspired by Claude Monet, soft colors, light effects, and nature themes",
+            "Picasso": "Cubist style inspired by Pablo Picasso, abstract shapes, bold colors, and fragmented forms",
+            "Alien": "Futuristic alien landscape, vibrant colors, otherworldly, sci-fi, surreal",
+            "Retro": "Retro 80s style, neon colors, vintage aesthetic, nostalgic, synthwave",
+            "Indian": "Traditional Indian art style, intricate patterns, vibrant colors, cultural motifs",
+            "Gothic": "Dark and moody gothic style, intricate details, dramatic lighting, mysterious atmosphere",
+            "Steampunk": "Steampunk style, Victorian era, mechanical elements, intricate details, retro-futuristic",
+            "Lord of the Rings": "Fantasy style inspired by Lord of the Rings, epic landscapes, mythical creatures, high fantasy",
         };
         
-        // Add event listeners to style preset buttons
-        document.querySelectorAll('.style-preset').forEach(button => {
-            button.addEventListener('click', () => {
-                const style = button.textContent;
-                if (stylePresets[style]) {
-                    stylePrompt.value = stylePresets[style];
-                    
-                    // Set appropriate strength for the style
-                    if (style === "Watercolor") {
-                        styleStrength.value = 0.5;
-                    } else if (style === "Oil Painting" || style === "Van Gogh") {
-                        styleStrength.value = 0.65;
-                    } else {
-                        styleStrength.value = 0.75; // Stronger for digital styles
+        // Dynamically create style preset buttons
+        function createStylePresetButtons() {
+            stylePresetsContainer.innerHTML = ''; // Clear any existing buttons
+            
+            Object.keys(stylePresets).forEach(style => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md';
+                button.textContent = style;
+                
+                button.addEventListener('click', () => {
+                    if (stylePresets[style]) {
+                        stylePrompt.value = stylePresets[style];
+                        // Set default strength for all styles
+                        styleStrength.value = 0.2;
+                        strengthValue.textContent = styleStrength.value;
                     }
-                    strengthValue.textContent = styleStrength.value;
-                }
+                });
+                
+                stylePresetsContainer.appendChild(button);
             });
-        });
+        }
+        
+        // Call the function to create buttons when the page loads
+        createStylePresetButtons();
         
         // Fetch system info on page load
         fetchSystemInfo();
@@ -323,6 +343,7 @@
                 hideMessage(); // Clear previous messages
                 outputImage.classList.add('hidden'); // Hide previous output
                 outputPlaceholder.classList.remove('hidden');
+                downloadContainer.classList.add('hidden'); // Hide download button when new image is loaded
             }
             reader.onerror = () => {
                 showMessage('Error reading file.', 'error');
@@ -443,6 +464,7 @@
             outputPlaceholder.classList.add('hidden');
             loadingIndicator.classList.remove('hidden');
             debugInfo.classList.add('hidden');
+            downloadContainer.classList.add('hidden'); // Hide download button during processing
             styleButton.innerHTML = `<span class="lucide mr-2 animate-spin">&#xe49f;</span> Styling...`;
                 
                 // Record start time for timing calculations
@@ -531,6 +553,7 @@
                         showMessage('Error: Invalid image data received from server', 'error');
                         outputPlaceholder.textContent = 'Failed to receive valid image data';
                         outputPlaceholder.classList.remove('hidden');
+                        downloadContainer.classList.add('hidden');
                         return;
                     }
                     
@@ -552,9 +575,21 @@
                             outputImage.classList.remove('hidden');
                             outputPlaceholder.classList.add('hidden');
                             showMessage('Style applied successfully!', 'success');
+                            
+                            // Setup download functionality
+                            downloadLink.href = imageData;
+                            
+                            // Generate a filename based on the style description
+                            const styleDesc = stylePrompt.value.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 30);
+                            const timestamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
+                            downloadLink.download = `styled_${styleDesc}_${timestamp}.jpg`;
+                            
+                            // Show the download button
+                            downloadContainer.classList.remove('hidden');
                         } else {
                             console.error('Image loaded but has no dimensions');
                             showMessage('Error: Generated image has no dimensions', 'error');
+                            downloadContainer.classList.add('hidden');
                         }
                     };
                     
@@ -634,6 +669,7 @@
                 showMessage(`Error: ${error.message}`, 'error');
                 outputPlaceholder.classList.remove('hidden');
                 outputPlaceholder.textContent = 'Failed to generate image. Check console for details.';
+                downloadContainer.classList.add('hidden'); // Ensure download button is hidden on error
             } finally {
                 styleButton.disabled = false;
                 loadingIndicator.classList.add('hidden');

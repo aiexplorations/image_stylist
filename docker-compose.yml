@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  image_stylist:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: image_stylist
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+    environment:
+      - PORT=8081
+    volumes:
+      - ./app.py:/app/app.py  # For development: allows changing code without rebuilding

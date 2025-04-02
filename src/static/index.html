@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Style Transfer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @font-face {
+        font-family: 'LucideIcons';
+        src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype');
+      }
+      .lucide {
+        font-family: 'LucideIcons';
+        font-size: 1.25rem;
+        line-height: 1;
+        vertical-align: middle;
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      #pasteArea {
+        border: 2px dashed #cbd5e1;
+        min-height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+      }
+      #pasteArea.drag-over {
+        background-color: #e2e8f0;
+        border-color: #94a3b8;
+      }
+      #pasteArea img {
+        max-width: 100%;
+        max-height: 300px;
+        object-fit: contain;
+        border-radius: 0.375rem;
+      }
+      .loader {
+        border: 4px solid #f3f4f6;
+        border-top: 4px solid #3b82f6;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-4xl">
+        <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">Image Style Transfer</h1>
+        <p class="text-center text-gray-600 -mt-4 mb-4">Optimized for Apple Silicon, NVIDIA GPUs, and CPU</p>
+
+        <div id="messageArea" class="mb-4 p-3 rounded-md text-sm text-center hidden"></div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            <div class="space-y-4">
+                <h2 class="text-lg font-semibold text-gray-700">1. Input Image</h2>
+                <div id="pasteArea" class="bg-gray-50 rounded-lg p-4 text-center text-gray-500 hover:bg-gray-100">
+                    <span id="pastePlaceholder">Click or Paste Image Here</span>
+                    <img id="inputImagePreview" class="hidden" alt="Input preview">
+                </div>
+
+                <div class="text-center">
+                    <label for="imageUpload" class="cursor-pointer inline-flex items-center px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600">
+                        <span class="lucide mr-2">&#xe459;</span> Or Upload File
+                    </label>
+                    <input type="file" id="imageUpload" accept="image/*" class="hidden">
+                </div>
+
+                <div>
+                    <label for="stylePrompt" class="block text-sm font-medium text-gray-700 mb-1">
+                        2. Describe Style
+                        <a href="/style_prompt_guide.md" target="_blank" class="text-blue-500 hover:text-blue-700 text-xs ml-2">(View Style Guide)</a>
+                    </label>
+                    <textarea id="stylePrompt" rows="3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., 'in the style of Van Gogh', 'make it look like a watercolor painting', 'apply a cyberpunk neon aesthetic'"></textarea>
+                    
+                    <div class="mt-2 flex flex-wrap gap-1">
+                        <span class="text-xs text-gray-500 mr-1">Quick styles:</span>
+                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Van Gogh</button>
+                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Cyberpunk</button>
+                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Watercolor</button>
+                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Pixar</button>
+                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Anime</button>
+                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Oil Painting</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="modelName" class="block text-sm font-medium text-gray-700 mb-1">3. Model Name</label>
+                    <input type="text" id="modelName" value="runwayml/stable-diffusion-v1-5" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    <p class="text-xs text-gray-500 mt-1">Try "CompVis/stable-diffusion-v1-4" or other HuggingFace models.</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label for="styleStrength" class="block text-sm font-medium text-gray-700 mb-1">Style Strength: <span id="strengthValue">0.65</span></label>
+                        <input type="range" id="styleStrength" min="0.1" max="0.9" step="0.05" value="0.65" 
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-xs text-gray-500 px-1">
+                            <span>Subtle</span>
+                            <span>Strong</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="styleSteps" class="block text-sm font-medium text-gray-700 mb-1">Quality Steps: <span id="stepsValue">50</span></label>
+                        <input type="range" id="styleSteps" min="20" max="100" step="5" value="50" 
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-xs text-gray-500 px-1">
+                            <span>Faster</span>
+                            <span>Better</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <label for="deviceSelect" class="block text-sm font-medium text-gray-700 mb-1">Processing Device</label>
+                    <select id="deviceSelect" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        <option value="auto">Auto (Use Best Available)</option>
+                        <option value="mps">Apple Silicon GPU (MPS)</option>
+                        <option value="cpu">CPU</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Note: Apple Silicon GPU acceleration is recommended for best performance.</p>
+                </div>
+
+                <div class="flex space-x-2">
+                    <button id="styleButton" class="w-full mt-4 px-6 py-3 bg-green-500 text-white font-semibold rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                        <span class="lucide mr-2">&#xe49f;</span> Apply Style
+                    </button>
+                    <button id="resetButton" class="mt-4 px-3 py-3 bg-amber-500 text-white font-semibold rounded-md hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                        <span class="lucide mr-1">&#xe042;</span> Reset
+                    </button>
+                </div>
+                
+                <div id="systemInfo" class="mt-4 text-xs text-gray-500 p-2 bg-gray-100 rounded-md hidden">
+                    <div class="font-medium mb-1">System Information</div>
+                    <div id="systemInfoContent">Loading...</div>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <h2 class="text-lg font-semibold text-gray-700">Output Image</h2>
+                <div id="outputArea" class="bg-gray-100 rounded-lg p-4 min-h-[300px] flex items-center justify-center relative">
+                     <div id="loadingIndicator" class="loader hidden"></div>
+                    <img id="outputImage" class="hidden max-w-full max-h-[400px] object-contain rounded-md" alt="Stylized output">
+                    <span id="outputPlaceholder" class="text-gray-500">Result will appear here...</span>
+                </div>
+                <div id="debugInfo" class="text-xs text-gray-500 hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const pasteArea = document.getElementById('pasteArea');
+        const pastePlaceholder = document.getElementById('pastePlaceholder');
+        const inputImagePreview = document.getElementById('inputImagePreview');
+        const imageUpload = document.getElementById('imageUpload');
+        const stylePrompt = document.getElementById('stylePrompt');
+        const modelNameInput = document.getElementById('modelName');
+        const styleButton = document.getElementById('styleButton');
+        const outputArea = document.getElementById('outputArea');
+        const outputImage = document.getElementById('outputImage');
+        const outputPlaceholder = document.getElementById('outputPlaceholder');
+        const messageArea = document.getElementById('messageArea');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const debugInfo = document.getElementById('debugInfo');
+        const styleStrength = document.getElementById('styleStrength');
+        const strengthValue = document.getElementById('strengthValue');
+        const styleSteps = document.getElementById('styleSteps');
+        const stepsValue = document.getElementById('stepsValue');
+        const deviceSelect = document.getElementById('deviceSelect');
+        const systemInfo = document.getElementById('systemInfo');
+        const systemInfoContent = document.getElementById('systemInfoContent');
+
+        let inputImageData = null; // Store Base64 image data
+        
+        // Update strength value display when slider changes
+        styleStrength.addEventListener('input', () => {
+            strengthValue.textContent = styleStrength.value;
+        });
+        
+        // Update steps value display when slider changes
+        styleSteps.addEventListener('input', () => {
+            stepsValue.textContent = styleSteps.value;
+        });
+        
+        // Fetch system information
+        async function fetchSystemInfo() {
+            try {
+                const response = await fetch('/system-info');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch system info');
+                }
+                
+                const data = await response.json();
+                
+                // Create info HTML
+                let infoHTML = `
+                    <div class="grid grid-cols-2 gap-x-2 gap-y-1">
+                        <div>Platform:</div>
+                        <div>${data.platform.split('-')[0]}</div>
+                        
+                        <div>PyTorch:</div>
+                        <div>${data.pytorch_version}</div>
+                        
+                        <div>Processor:</div>
+                        <div>${data.hardware.is_apple_silicon ? 'Apple Silicon' : data.hardware.processor.split(' ')[0]}</div>
+                        
+                        <div>MPS Available:</div>
+                        <div>${data.hardware.mps_available ? '✅' : '❌'}</div>
+                        
+                        <div>Current Device:</div>
+                        <div>${data.model_info.current_device}</div>
+                `;
+                
+                infoHTML += `</div>`;
+                
+                // Update UI
+                systemInfoContent.innerHTML = infoHTML;
+                systemInfo.classList.remove('hidden');
+                
+                // Pre-select the current device in the dropdown
+                const currentDevice = data.model_info.current_device;
+                if (currentDevice === 'cpu') {
+                    deviceSelect.value = 'cpu';
+                } else if (currentDevice === 'mps') {
+                    deviceSelect.value = 'mps';
+                }
+                
+            } catch (error) {
+                console.error('Error fetching system info:', error);
+                systemInfoContent.innerHTML = `
+                    <div class="text-red-500">Could not fetch system information</div>
+                    <div class="mt-1">Try refreshing the page or check the console for errors.</div>
+                    <div class="mt-1">This doesn't affect the application's functionality.</div>
+                `;
+                systemInfo.classList.remove('hidden');
+            }
+        }
+        
+        // Style preset buttons
+        const stylePresets = {
+            "Van Gogh": "Impressionist painting in the style of Vincent Van Gogh, bold brushstrokes, vibrant colors, artistic",
+            "Cyberpunk": "Cyberpunk style, neon colors, futuristic, digital art, detailed, sci-fi aesthetic",
+            "Watercolor": "Delicate watercolor painting, soft colors, flowing, artistic style, loose brushwork",
+            "Pixar": "3D animated Pixar style, cartoony, colorful, high quality render, family-friendly",
+            "Anime": "Anime style, cel shaded, vibrant colors, detailed, Studio Ghibli inspired",
+            "Oil Painting": "Classic oil painting on canvas, detailed, rich colors, realistic painting style"
+        };
+        
+        // Add event listeners to style preset buttons
+        document.querySelectorAll('.style-preset').forEach(button => {
+            button.addEventListener('click', () => {
+                const style = button.textContent;
+                if (stylePresets[style]) {
+                    stylePrompt.value = stylePresets[style];
+                    
+                    // Set appropriate strength for the style
+                    if (style === "Watercolor") {
+                        styleStrength.value = 0.5;
+                    } else if (style === "Oil Painting" || style === "Van Gogh") {
+                        styleStrength.value = 0.65;
+                    } else {
+                        styleStrength.value = 0.75; // Stronger for digital styles
+                    }
+                    strengthValue.textContent = styleStrength.value;
+                }
+            });
+        });
+        
+        // Fetch system info on page load
+        fetchSystemInfo();
+
+        // --- Message Handling ---
+        function showMessage(text, type = 'info') {
+            console.log(`${type.toUpperCase()}: ${text}`);
+            messageArea.textContent = text;
+            messageArea.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
+            
+            if (type === 'error') {
+                messageArea.classList.add('bg-red-100', 'text-red-700');
+            } else if (type === 'success') {
+                messageArea.classList.add('bg-green-100', 'text-green-700');
+            } else { // info
+                messageArea.classList.add('bg-blue-100', 'text-blue-700');
+            }
+            messageArea.classList.remove('hidden');
+        }
+
+        function hideMessage() {
+            messageArea.classList.add('hidden');
+        }
+
+        // --- Image Input Handling ---
+        function handleImageFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showMessage('Please select a valid image file.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                inputImageData = e.target.result; // This is Base64 data URL
+                console.log(`Image loaded, size: ${Math.round(inputImageData.length / 1024)} KB`);
+                
+                inputImagePreview.src = inputImageData;
+                inputImagePreview.classList.remove('hidden');
+                pastePlaceholder.classList.add('hidden');
+                hideMessage(); // Clear previous messages
+                outputImage.classList.add('hidden'); // Hide previous output
+                outputPlaceholder.classList.remove('hidden');
+            }
+            reader.onerror = () => {
+                showMessage('Error reading file.', 'error');
+                inputImageData = null;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        // Handle file upload input
+        imageUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            handleImageFile(file);
+        });
+
+        // Handle clicking the paste area to trigger file upload
+        pasteArea.addEventListener('click', () => {
+            imageUpload.click();
+        });
+
+        // Handle pasting image
+        document.addEventListener('paste', (event) => {
+            // Check if the paste event target is inside our app, or if focus is on an input where paste is expected
+            if (!document.body.contains(event.target) || event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+               // Allow default paste behavior in inputs/textareas
+               return;
+            }
+
+            // Prevent default paste behavior elsewhere
+            event.preventDefault();
+            hideMessage();
+
+            const items = (event.clipboardData || window.clipboardData).items;
+            let file = null;
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    file = item.getAsFile();
+                    break;
+                }
+            }
+
+            if (file) {
+                handleImageFile(file);
+            } else {
+                showMessage('No image data found in clipboard.', 'error');
+            }
+        });
+        
+        // Reset model button handler
+        resetButton.addEventListener('click', async () => {
+            try {
+                resetButton.disabled = true;
+                resetButton.innerHTML = `<span class="lucide mr-1 animate-spin">&#xe042;</span> Resetting...`;
+                showMessage('Resetting model pipeline, please wait...', 'info');
+                
+                const response = await fetch('/reset-model', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to reset model: ${errorText}`);
+                }
+                
+                const data = await response.json();
+                showMessage('Model pipeline reset successfully. Ready for next generation.', 'success');
+                fetchSystemInfo(); // Refresh system info
+            } catch (error) {
+                console.error('Error resetting model:', error);
+                showMessage(`Error resetting model: ${error.message}`, 'error');
+            } finally {
+                resetButton.disabled = false;
+                resetButton.innerHTML = `<span class="lucide mr-1">&#xe042;</span> Reset`;
+            }
+        });
+
+        // Add drag & drop support to paste area
+        pasteArea.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            pasteArea.classList.add('drag-over');
+        });
+        pasteArea.addEventListener('dragleave', () => {
+            pasteArea.classList.remove('drag-over');
+        });
+        pasteArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            pasteArea.classList.remove('drag-over');
+            const file = event.dataTransfer.files[0];
+            if (file) {
+                handleImageFile(file);
+            }
+        });
+
+        // --- API Interaction ---
+        styleButton.addEventListener('click', async () => {
+            const promptText = stylePrompt.value.trim();
+            const modelName = modelNameInput.value.trim();
+
+            if (!inputImageData) {
+                showMessage('Please upload or paste an image first.', 'error');
+                return;
+            }
+            if (!promptText) {
+                showMessage('Please enter a style description.', 'error');
+                return;
+            }
+            if (!modelName) {
+                showMessage('Please enter the model name.', 'error');
+                return;
+            }
+
+            // Prepare for API call
+            hideMessage();
+            styleButton.disabled = true;
+            outputImage.classList.add('hidden');
+            outputPlaceholder.classList.add('hidden');
+            loadingIndicator.classList.remove('hidden');
+            debugInfo.classList.add('hidden');
+            styleButton.innerHTML = `<span class="lucide mr-2 animate-spin">&#xe49f;</span> Styling...`;
+                
+                // Record start time for timing calculations
+                const startTime = Date.now();
+
+            try {
+                console.log('Preparing image data...');
+                
+                // Extract Base64 data part (remove prefix like 'data:image/png;base64,')
+                let base64Image = inputImageData;
+                if (base64Image.includes(',')) {
+                    base64Image = base64Image.split(',')[1];
+                }
+                
+                showMessage('Processing your image, this may take a minute...', 'info');
+                console.log('Sending request to backend...');
+                
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: modelName,
+                        prompt: promptText,
+                        image: base64Image,
+                        strength: parseFloat(styleStrength.value),
+                        steps: parseInt(styleSteps.value),
+                        device: deviceSelect.value
+                    }),
+                });
+
+                console.log('Response status:', response.status);
+                
+                if (!response.ok) {
+                    let errorText = '';
+                    try {
+                        const errorJson = await response.json();
+                        errorText = errorJson.detail || response.statusText;
+                    } catch (e) {
+                        errorText = await response.text() || response.statusText;
+                    }
+                    console.error('Error response:', errorText);
+                    throw new Error(`API Error: ${errorText}`);
+                }
+
+                // Get the raw text response first for debugging
+                const responseText = await response.text();
+                console.log('Response received, length:', responseText.length);
+                
+                let data;
+                try {
+                    // Parse the JSON response
+                    data = JSON.parse(responseText);
+                    console.log('Response parsed successfully');
+                    if (data.info) {
+                        console.log('Response info:', data.info);
+                    }
+                } catch (e) {
+                    console.error('Error parsing JSON response:', e);
+                    console.log('First 100 chars of response:', responseText.substring(0, 100));
+                    throw new Error('Failed to parse server response');
+                }
+
+                if (data && data.status === "success" && data.data && data.data.image) {
+                    console.log('Setting output image...');
+                    
+                    // Display processing info if available
+                    if (data.info) {
+                        let infoText = `Generated image in ${(Date.now() - startTime) / 1000}s using ${data.model_info?.current_device || 'unknown device'}`;
+                        
+                        infoText += `<br>Model: ${modelName} | Strength: ${styleStrength.value} | Steps: ${styleSteps.value}`;
+                        debugInfo.innerHTML = infoText;
+                        debugInfo.classList.remove('hidden');
+                        
+                        // Refresh system info to show latest state
+                        fetchSystemInfo();
+                    }
+                    
+                    console.log('Setting output image...');
+                    
+                    // Check response data
+                    const imageData = data.data.image;
+                    if (typeof imageData !== 'string' || imageData.length < 100) {
+                        console.error('Invalid image data received:', imageData);
+                        showMessage('Error: Invalid image data received from server', 'error');
+                        outputPlaceholder.textContent = 'Failed to receive valid image data';
+                        outputPlaceholder.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    // Create a new image element to avoid browser caching issues
+                    const newImg = new Image();
+                    
+                    // Set up detailed debug logging
+                    console.log('Image data preview:', imageData.substring(0, 100) + '...');
+                    console.log('Image data length:', imageData.length);
+                    
+                    // Define onload handler
+                    newImg.onload = () => {
+                        console.log('Output image loaded successfully:', newImg.width, 'x', newImg.height);
+                        
+                        // Check if image actually has dimensions (not black/empty)
+                        if (newImg.width > 0 && newImg.height > 0) {
+                            // Replace the old image source with the new one
+                            outputImage.src = newImg.src;
+                            outputImage.classList.remove('hidden');
+                            outputPlaceholder.classList.add('hidden');
+                            showMessage('Style applied successfully!', 'success');
+                        } else {
+                            console.error('Image loaded but has no dimensions');
+                            showMessage('Error: Generated image has no dimensions', 'error');
+                        }
+                    };
+                    
+                    // Define error handler
+                    newImg.onerror = (e) => {
+                        console.error('Error loading output image:', e);
+                        
+                        // Try to diagnose the issue
+                        const imgDataLength = imageData.length;
+                        const isBase64 = imageData.startsWith('data:');
+                        const base64Part = isBase64 ? imageData.split(',')[1] : '';
+                        
+                        console.log('Image data details:', {
+                            fullLength: imgDataLength,
+                            isBase64Format: isBase64,
+                            base64Length: base64Part ? base64Part.length : 'N/A',
+                            prefix: imageData.substring(0, 30) + '...'
+                        });
+                        
+                        // Try alternate format if the first one fails
+                        if (!newImg.src.startsWith('data:image/jpeg')) {
+                            console.log('Trying JPEG format instead...');
+                            setTimeout(() => {
+                                try {
+                                    const base64Data = isBase64 ? imageData.split(',')[1] : imageData;
+                                    newImg.src = 'data:image/jpeg;base64,' + base64Data;
+                                } catch (err) {
+                                    console.error('Error with alternate format:', err);
+                                }
+                            }, 500);
+                        } else {
+                            showMessage(`Error loading image: ${e.message || 'Unknown error'}`, 'error');
+                            outputPlaceholder.textContent = 'Failed to load output image. See console for details.';
+                            outputPlaceholder.classList.remove('hidden');
+                        }
+                    };
+                    
+                    // Set the source after defining the handlers
+                    try {
+                        if (imageData.startsWith('data:image/')) {
+                            console.log('Using standard image data format');
+                            newImg.src = imageData;
+                        } else {
+                            console.log('Adding image data prefix');
+                            newImg.src = 'data:image/jpeg;base64,' + imageData;
+                        }
+                        
+                        // Add a link to view the debug image directly
+                        const debugImgLink = document.createElement('a');
+                        debugImgLink.href = '/debug-image';
+                        debugImgLink.target = '_blank';
+                        debugImgLink.textContent = '(View debug image)';
+                        debugImgLink.className = 'text-blue-500 underline ml-2 inline-block';
+                        if (debugInfo.lastChild.nodeType === Node.TEXT_NODE) {
+                            // If the last child is text, add the link after it
+                            debugInfo.appendChild(debugImgLink);
+                        } else {
+                            // Otherwise just append it
+                            debugInfo.appendChild(document.createElement('br'));
+                            debugInfo.appendChild(debugImgLink);
+                        }
+                        
+                    } catch (imgError) {
+                        console.error('Error setting image source:', imgError);
+                        // Ultimate fallback - direct link to debug image
+                        outputImage.src = '/debug-image?' + new Date().getTime(); // Add timestamp to prevent caching
+                        outputImage.classList.remove('hidden');
+                        outputPlaceholder.classList.add('hidden');
+                    }
+                } else {
+                    console.error('Invalid response format:', data);
+                    throw new Error('Invalid response format from API: ' + JSON.stringify(data, null, 2));
+                }
+
+            } catch (error) {
+                console.error('Style transfer error:', error);
+                showMessage(`Error: ${error.message}`, 'error');
+                outputPlaceholder.classList.remove('hidden');
+                outputPlaceholder.textContent = 'Failed to generate image. Check console for details.';
+            } finally {
+                styleButton.disabled = false;
+                loadingIndicator.classList.add('hidden');
+                styleButton.innerHTML = `<span class="lucide mr-2">&#xe49f;</span> Apply Style`;
+            }
+        });
+    </script>
+
+</body>
+</html>

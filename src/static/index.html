@@ -89,12 +89,9 @@
                     
                     <div class="mt-2 flex flex-wrap gap-1">
                         <span class="text-xs text-gray-500 mr-1">Quick styles:</span>
-                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Van Gogh</button>
-                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Cyberpunk</button>
-                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Watercolor</button>
-                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Pixar</button>
-                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Anime</button>
-                        <button type="button" class="style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md">Oil Painting</button>
+                        <div id="stylePresetsContainer" class="flex flex-wrap gap-1">
+                            <!-- Style preset buttons will be dynamically generated here -->
+                        </div>
                     </div>
                 </div>
 
@@ -106,8 +103,8 @@
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
-                        <label for="styleStrength" class="block text-sm font-medium text-gray-700 mb-1">Style Strength: <span id="strengthValue">0.65</span></label>
-                        <input type="range" id="styleStrength" min="0.1" max="0.9" step="0.05" value="0.65" 
+                        <label for="styleStrength" class="block text-sm font-medium text-gray-700 mb-1">Style Strength: <span id="strengthValue">0.2</span></label>
+                        <input type="range" id="styleStrength" min="0.1" max="0.9" step="0.05" value="0.2" 
                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                         <div class="flex justify-between text-xs text-gray-500 px-1">
                             <span>Subtle</span>
@@ -116,8 +113,8 @@
                     </div>
                     
                     <div>
-                        <label for="styleSteps" class="block text-sm font-medium text-gray-700 mb-1">Quality Steps: <span id="stepsValue">50</span></label>
-                        <input type="range" id="styleSteps" min="20" max="100" step="5" value="50" 
+                        <label for="styleSteps" class="block text-sm font-medium text-gray-700 mb-1">Quality Steps: <span id="stepsValue">70</span></label>
+                        <input type="range" id="styleSteps" min="20" max="100" step="5" value="70" 
                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                         <div class="flex justify-between text-xs text-gray-500 px-1">
                             <span>Faster</span>
@@ -279,25 +276,31 @@
             "Lord of the Rings": "Fantasy style inspired by Lord of the Rings, epic landscapes, mythical creatures, high fantasy",
         };
         
-        // Add event listeners to style preset buttons
-        document.querySelectorAll('.style-preset').forEach(button => {
-            button.addEventListener('click', () => {
-                const style = button.textContent;
-                if (stylePresets[style]) {
-                    stylePrompt.value = stylePresets[style];
-                    
-                    // Set appropriate strength for the style
-                    if (style === "Watercolor") {
-                        styleStrength.value = 0.5;
-                    } else if (style === "Oil Painting" || style === "Van Gogh") {
-                        styleStrength.value = 0.65;
-                    } else {
-                        styleStrength.value = 0.75; // Stronger for digital styles
+        // Dynamically create style preset buttons
+        function createStylePresetButtons() {
+            stylePresetsContainer.innerHTML = ''; // Clear any existing buttons
+            
+            Object.keys(stylePresets).forEach(style => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'style-preset text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded-md';
+                button.textContent = style;
+                
+                button.addEventListener('click', () => {
+                    if (stylePresets[style]) {
+                        stylePrompt.value = stylePresets[style];
+                        // Set default strength for all styles
+                        styleStrength.value = 0.2;
+                        strengthValue.textContent = styleStrength.value;
                     }
-                    strengthValue.textContent = styleStrength.value;
-                }
+                });
+                
+                stylePresetsContainer.appendChild(button);
             });
-        });
+        }
+        
+        // Call the function to create buttons when the page loads
+        createStylePresetButtons();
         
         // Fetch system info on page load
         fetchSystemInfo();

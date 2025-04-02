@@ -69,8 +69,16 @@ async def generate_image(request: StyleRequest) -> ModelResponse:
             logging.warning("Pipeline not initialized. Attempting initialization on demand...")
             device, _ = setup_device()
             # This will raise an error if it fails, handled by the outer try/except
-            pipeline_manager.initialize_pipeline(request.model or pipeline_manager.model_id, device)
-            logging.info(f"On-demand pipeline initialization successful on {pipeline_manager.current_device}")
+            try:
+                pipeline_manager.initialize_pipeline(request.model or pipeline_manager.model_id, device, skip_dummy_inference=False)
+                logging.info(f"On-demand pipeline initialization successful on {pipeline_manager.current_device}")
+            except Exception as init_error:
+                # On Apple Silicon, we still want to try using the model even if dummy inference fails
+                if device == "mps" and "Dummy inference failed" in str(init_error):
+                    logging.warning(f"Continuing despite dummy inference error on MPS: {init_error}")
+                else:
+                    # For other errors, re-raise
+                    raise
         
         print("Decoding base64 image...")
         input_image = decode_base64_image(request.image)
@@ -85,8 +93,18 @@ async def generate_image(request: StyleRequest) -> ModelResponse:
         pipe = pipeline_manager.get_pipeline()
         if pipe is None:
             logging.error("Get pipeline returned None. Last error: %s", pipeline_manager.last_error)
-            error_detail = pipeline_manager.last_error or "Model pipeline not available or failed to initialize."
-            raise HTTPException(status_code=500, detail=error_detail)
+            # Try resetting and reinitializing the pipeline if None
+            if "mps" in str(pipeline_manager.current_device).lower():
+                logging.warning("Attempting to reset MPS pipeline...")
+                device, _ = setup_device()
+                pipeline_manager.initialize_pipeline(request.model or pipeline_manager.model_id, device, skip_dummy_inference=True)
+                pipe = pipeline_manager.get_pipeline()
+                if pipe is None:
+                    error_detail = pipeline_manager.last_error or "Model pipeline not available after reset attempt."
+                    raise HTTPException(status_code=500, detail=error_detail)
+            else:
+                error_detail = pipeline_manager.last_error or "Model pipeline not available or failed to initialize."
+                raise HTTPException(status_code=500, detail=error_detail)
         
         print(f"Generating image with {request.steps} steps and strength {request.strength}...")
         result = pipe(

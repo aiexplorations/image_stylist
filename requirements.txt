@@ -1,0 +1,22 @@
+# Core dependencies
+diffusers==0.27.2
+transformers==4.38.2
+fastapi
+uvicorn[standard]
+python-multipart==0.0.6
+pillow
+numpy==1.26.2
+accelerate==0.27.2
+safetensors==0.4.1
+requests==2.31.0
+huggingface-hub==0.20.3
+
+# PyTorch - will be installed with specific platform command
+# On macOS with Apple Silicon, use: 
+# pip install torch torchvision
+
+# Testing dependencies
+# pytest
+# pytest-cov
+# pytest-asyncio
+# httpx
